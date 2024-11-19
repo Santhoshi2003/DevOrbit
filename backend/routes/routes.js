@@ -4,10 +4,10 @@ const multer = require('multer');
 
 const router = express.Router();
 
-// File storage setup using multer
+// Multer storage setup
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, 'uploads/'); // Make sure you have an 'uploads' directory
+    cb(null, 'uploads/'); // Ensure 'uploads/' directory exists
   },
   filename: function (req, file, cb) {
     cb(null, Date.now() + '-' + file.originalname);
@@ -15,7 +15,7 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage: storage });
 
-// POST Route: Add new item
+// CREATE: Add new item
 router.post('/add-item', upload.single('file'), async (req, res) => {
   try {
     const { type, title, description, startDate, endDate, questions } = req.body;
@@ -37,7 +37,7 @@ router.post('/add-item', upload.single('file'), async (req, res) => {
   }
 });
 
-// GET Route: Get all stored items
+// READ: Get all items
 router.get('/submissions', async (req, res) => {
   try {
     const items = await Item.find();
@@ -45,6 +45,63 @@ router.get('/submissions', async (req, res) => {
   } catch (error) {
     console.error('Error fetching items:', error);
     res.status(500).json({ message: 'Failed to fetch items', error });
+  }
+});
+
+// READ: Get a single item by ID
+router.get('/submissions/:id', async (req, res) => {
+  try {
+    const item = await Item.findById(req.params.id);
+    if (!item) {
+      return res.status(404).json({ message: 'Item not found' });
+    }
+    res.status(200).json(item);
+  } catch (error) {
+    console.error('Error fetching item:', error);
+    res.status(500).json({ message: 'Failed to fetch item', error });
+  }
+});
+
+// UPDATE: Update an existing item by ID
+router.put('/update-item/:id', upload.single('file'), async (req, res) => {
+  try {
+    const { type, title, description, startDate, endDate, questions } = req.body;
+    const updatedData = {
+      type,
+      title,
+      description,
+      startDate,
+      endDate,
+      questions: questions ? JSON.parse(questions) : []
+    };
+    
+    if (req.file) {
+      updatedData.file = req.file.path;
+    }
+
+    const updatedItem = await Item.findByIdAndUpdate(req.params.id, updatedData, { new: true });
+    if (!updatedItem) {
+      return res.status(404).json({ message: 'Item not found' });
+    }
+
+    res.status(200).json({ message: 'Item updated successfully!', data: updatedItem });
+  } catch (error) {
+    console.error('Error updating item:', error);
+    res.status(500).json({ message: 'Failed to update item', error });
+  }
+});
+
+// DELETE: Delete an item by ID
+router.delete('/delete-item/:id', async (req, res) => {
+  try {
+    const deletedItem = await Item.findByIdAndDelete(req.params.id);
+    if (!deletedItem) {
+      return res.status(404).json({ message: 'Item not found' });
+    }
+    res.status(200).json({ message: 'Item deleted successfully!' });
+  } catch (error) {
+    console.error('Error deleting item:', error);
+    res.status(500).json({ message: 'Failed to delete item', error });
   }
 });
 
